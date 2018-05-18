@@ -378,26 +378,11 @@
               <FileType>1</FileType>
               <FilePath>..\Source\system\timer.c</FilePath>
             </File>
-            <File>
-              <FileName>iic.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Source\system\iic.c</FilePath>
-            </File>
           </Files>
         </Group>
         <Group>
           <GroupName>PerDri</GroupName>
           <Files>
-            <File>
-              <FileName>24c02.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Source\driver\24c02.c</FilePath>
-            </File>
-            <File>
-              <FileName>gt20.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Source\driver\gt20.c</FilePath>
-            </File>
             <File>
               <FileName>max485.c</FileName>
               <FileType>1</FileType>
@@ -412,18 +397,6 @@
         </Group>
         <Group>
           <GroupName>Hal</GroupName>
-          <Files>
-            <File>
-              <FileName>botp.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Source\botp.c</FilePath>
-            </File>
-            <File>
-              <FileName>command.c</FileName>
-              <FileType>1</FileType>
-              <FilePath>..\Source\command.c</FilePath>
-            </File>
-          </Files>
         </Group>
         <Group>
           <GroupName>App</GroupName>

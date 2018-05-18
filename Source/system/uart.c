@@ -13,7 +13,6 @@ char putchar(char c) {
     return c;
 }
 void Uart1Isr(void) interrupt 4 using 0 {
-	uint8_t index = 0x00;
     if (RI) {
         buffer[wptr++] = SBUF;
         wptr &= 0xff;

@@ -4,7 +4,7 @@
 #include "stdio.h"
 #include "timer.h"
 
-
+LEDItem LED;
 static void Delay10us(void) {		//@24.000MHz
 	unsigned char i;
 

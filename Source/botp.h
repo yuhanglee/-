@@ -204,6 +204,13 @@
 												((id) <= 7) \
 											) 
 
+#define EXEC_OBJ_CMD_LED					0x51				// LED 光融合实验结构体
+#define EXEC_OBJ_CMD_LED_RET				0x52				// LED 光融合实验结果
+
+#define IS_OBJ_CMD(id)						( \
+												(EXEC_OBJ_CMD_LED 				== (id)) || \
+												(EXEC_OBJ_CMD_LED_RET			== (id)) \
+											)									
 typedef struct {
 	uint8_t 	Data[PACK_DATA_LEN];
 	uint16_t 	Crc16;
@@ -218,11 +225,11 @@ typedef struct {
 	uint16_t 		Family;			// ushort 类型  	0x0000 微畅    0xffff 自由协议
 	uint8_t 		Version;		// 版本			 	0x00   开发版本
 	struct _msg		Msg;			// 消息类型 
-	uint32_t 		SMacAddr;				// 从设备mac地址 
- 	uint32_t 		MsgCount;				// 消息计数
- 	uint32_t 		DMacAddr;				// 目标设备mac地址  供中继使用
-	uint32_t 		QuickCmd;				// 快速指令
-	uint16_t 		PackLen;				// 数据长度
+	uint32_t 		SMacAddr;		// 从设备mac地址 
+ 	uint32_t 		MsgCount;		// 消息计数
+ 	uint32_t 		DMacAddr;		// 目标设备mac地址  供中继使用
+	uint32_t 		QuickCmd;		// 快速指令
+	uint16_t 		PackLen;		// 数据长度
 	Pack_t 	 		Pack;
 } BOTP;
 
@@ -243,6 +250,14 @@ typedef struct {
     uint32_t    BUS;        // 总线协议，每个设备占 3bits ，共 3*8=24 bits
 } ExtDevInfo;
 
+#define OBJ_LEN				8
+typedef struct {
+	uint8_t Id;				// 执行obj的唯一标识
+	uint8_t Len;			// Obj的长度，用于获取数据
+	void *  Data;			// 数据的指针
+} ExecObjItem;
+extern ExecObjItem ExecObjArray[];
+
 uint16_t CRC16_Calc(char * CrcArray, uint16_t CrcLen);
 void CRC16_CreateTable(void);
 uint16_t BOTP_PackDataFill(Pack_t * p);
@@ -262,4 +277,7 @@ uint8_t ExtDev_GetDeviceIdleIndex(void);
 uint8_t ExtDev_GetDeviceIndexByMac(uint32_t Mac);
 uint8_t ExtDev_GetDeviceIndexByBusIndex(uint8_t BusId, uint8_t Index);
 uint8_t BOTP_SendData(BOTP * b);
+
+uint8_t ExecObjInit(ExecObjItem * Obj, uint8_t Id, uint8_t Len, void * Data);
+
 #endif

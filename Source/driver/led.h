@@ -25,15 +25,25 @@
 #define LED_B_SET()         LED1_SET()
 #define LED_B_RESET()       LED1_RESET()
 
-#define LED_G_SET()         LED2_SET()
-#define LED_G_RESET()       LED2_RESET()
+#define LED_G_SET()         LED3_SET()
+#define LED_G_RESET()       LED3_RESET()
 
-#define LED_R_SET()         LED3_SET()
-#define LED_R_RESET()       LED3_RESET()
+#define LED_R_SET()         LED2_SET()
+#define LED_R_RESET()       LED2_RESET()
 
 #define LED_B               1
-#define LED_G               2
-#define LED_R               3
+#define LED_R               2
+#define LED_G               3
+
+
+typedef struct _LED {
+	uint32_t Color;			// 格式00xxxxxxH  RGB
+	uint32_t Freq;			// 格式 B：b0  ~ b9  10Bits
+							//      G：b10 ~ b19 10Bits
+							//      R：b20 ~ b29 10Bits
+							//      Count: b30 ~ b31 2Bits  每次实验，最多进行4个色彩的光融合测试
+} LEDItem;
+extern LEDItem LED;
 
 extern uint16_t fre;
 extern uint8_t color;

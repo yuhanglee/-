@@ -208,6 +208,9 @@ ExtDev device[8] = {
 	{{BUS_NET,  MSG_TYPE_USER},     0,  0x00000000},
 };
 
+ExecObjItem ExecObjArray[OBJ_LEN] = {
+	0
+};
 void ExtDev_Init(ExtDev * Dev) {
 	wc_assert(IS_EXT_DEV_ID(((Dev - device) / sizeof(device[0]))));
 	
@@ -234,8 +237,6 @@ uint8_t ExtDev_GetBusIdleIndex(uint8_t BusId) {
 	return index & 0xff;
 }
 
- 
- 
 void ExtDev_SetBusId(ExtDev * Dev, uint8_t BusId) {
 	wc_assert(IS_BUS(BusId));
 	wc_assert(IS_EXT_DEV_ID((Dev - device) / sizeof(device[0])));
@@ -312,9 +313,6 @@ uint8_t ExtDev_GetDeviceIndexByBusIndex(uint8_t BusId, uint8_t Index) {
 	return BOTP_ERROR_INDEX;
 } 
 
-
-
-
 void ExtDev_ClearDeviceTable(void) {
     uint8_t i, j;
     
@@ -329,6 +327,45 @@ void ExtDev_ClearDeviceTable(void) {
     }
 }
 
+
+uint8_t ExecObjDefaultInit(ExecObjItem * Obj) {
+	wc_assert(Obj);
+	
+	Obj->Id = 0;
+	Obj->Len = 0;
+	Obj->Data = 0;
+	
+	return 0;
+}
+
+uint8_t ExecObjInit(ExecObjItem * Obj, uint8_t Id, uint8_t Len, void * Data) {
+	wc_assert(Obj);
+	wc_assert(IS_OBJ_CMD(Id));
+	wc_assert(Len <= 255);
+	wc_assert(Data);
+	
+	Obj->Id = Id;
+	Obj->Len = Len;
+	Obj->Data = (void *)Data;
+}
+
+uint8_t ExecObj(uint8_t * DataPtr) {
+	uint8_t i = 0, j;
+	
+	wc_assert(DataPtr);
+	wc_assert(IS_OBJ_CMD(DataPtr[0]));
+	
+	for (i = 0;i < OBJ_LEN;i++) {
+		if (DataPtr[0] == ExecObjArray[i].Id) {
+			memcpy(ExecObjArray[i].Data, &(DataPtr[1]), ExecObjArray[i].Len);
+			return ExecObjArray[i].Len+1;
+		}
+	}
+	
+	if (OBJ_LEN == i) {
+		return 0;
+	}
+}
 
 uint8_t BOTP_BusNet(BOTP botp) {
 	switch (BOTP_GetMsgType(botp)) {
@@ -449,8 +486,11 @@ uint8_t BOTP_BusCAN(BOTP botp) {
 void BOTP_Init(BOTP * botp) {
 	memset(botp, 0, sizeof(BOTP));
 	botp->Header 			= HEADER;
-	botp->Version			= VERSION;
 	botp->Family			= FAMILY;
+	botp->Version			= VERSION;
+	botp->SMacAddr			= BOTP_MAC_ADDR;
+	botp->MsgCount			= 0x0000;
+	botp->DMacAddr			= BOTP_MAC_ADDR;
 }
 
 uint8_t BOTP_Exec(BOTP * botp) {
@@ -470,7 +510,7 @@ uint8_t BOTP_Exec(BOTP * botp) {
         if (BOTP_ERROR_INDEX != index) { // 可以在设备表中找到设备
             botp->Msg.BusID = device[index].Msg.BusID;
             botp->MsgCount = device[index].Msg.Type;
-            BOTP_PackExtTest(&(botp->Pack), botp->PackLen);
+            // BOTP_PackExtTest(&(botp->Pack), botp->PackLen);
             return BOTP_SendData(botp);
         } else {
             index = ExtDev_GetDeviceIdleIndex(); // 获取空闲设备索引
@@ -486,24 +526,14 @@ uint8_t BOTP_Exec(BOTP * botp) {
             }
             printf("idle device index error\r\n");
         }
-//		switch (BOTP_GetMsgType	(*botp)) {
-//			case MSG_TYPE_UP:
-//			break;
-//			
-//			case MSG_TYPE_DOWN:
-//			break;
-//			
-//			case MSG_TYPE_ASK:
-//			break;
-//			
-//			case MSG_TYPE_ACK:
-//			break;
-//			
-//			default:
-//			return BOTP_ERROR_TYPE;
-//		} 
 		return BOTP_ERROR_DMAC_ADDR;
-	} 
+	} else { // 进行本机解析
+		 if (0 == BOTP_PackExtTest(&(botp->Pack), botp->PackLen)) {
+			printf("ext ok\r\n");
+		} else {
+			printf("ext error\r\n");
+		}
+	}
 	
 //	// 数据校验不对 
 //	if (0 == BOTP_CheckCrc(*botp)) {
@@ -535,16 +565,10 @@ uint8_t BOTP_Exec(BOTP * botp) {
 //		return BOTP_ERROR_MSG_BUS; 
 //	}
     
-    if (0 == BOTP_PackExtTest(&(botp->Pack), botp->PackLen)) {
-        printf("ext ok\r\n");
-    } else {
-        printf("ext error\r\n");
-        return BOTP_ERROR_MSG_BUS;
-    }
+   
 	
     return BOTP_OK;	
 }
-
 
 uint16_t BOTP_PackDataFill(Pack_t * p) {
 	int i = 0;
@@ -598,6 +622,7 @@ uint16_t BOTP_PackDataFill(Pack_t * p) {
 uint8_t BOTP_PackExtTest(Pack_t * p, uint16_t len) {
 	uint16_t i = 0, u_8 = 0;
 	uint16_t item_len = 0;
+	uint8_t ret = 0x00;
 	char res[16];
 	
 	do {
@@ -679,16 +704,25 @@ uint8_t BOTP_PackExtTest(Pack_t * p, uint16_t len) {
 				}
 				printf("\r\n");
 			break;
+			
+			case PACK_TYPE_OBJ_NOT_NULL:
+				item_len = ExecObj((uint8_t *)(&(p->Data[i+1]))) + 1;
+			break;
+			
+			default:
+				printf("cmd default: %bx\r\n", p->Data[i]);
+			break;
 		}
 		i += item_len;
 		len -= item_len;
 		item_len = 0;
         if ((int)len < 0) {
-            return 0xff;
+            ret = 0xff;
+			break;
         }
 	} while (len);
-    
-	return 0x00;
+    printf("end%x\r\n", len);
+	return ret;
 }
 
 uint8_t BOTP_SendData(BOTP * b) {
@@ -733,3 +767,4 @@ uint8_t BOTP_SendData(BOTP * b) {
     
     return BOTP_OK;
 }
+
