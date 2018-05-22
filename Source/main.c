@@ -14,6 +14,7 @@
 #include "key.h"
 #include "botp.h"
 
+LEDItem LEDRes[4];
 static void Delay_ms(uint16_t Del_1ms) {
 	uint8_t j;
     
@@ -39,7 +40,7 @@ static void Delay500ms()		//@11.0592MHz
 		} while (--j);
 	} while (--i);
 }
-extern uint8_t wptr;
+extern uint16_t wptr;
 extern uint8_t rptr;
 extern char buffer[];
 
@@ -62,30 +63,19 @@ void DelayInit(void) {
 	t3.Count = 10;
     Timer3_Init(&t3);
 }
-void SendRes(uint8_t f1, uint8_t f2, uint8_t f3) {
-    uint8_t PAD_SendStr[256];
-    memset(PAD_SendStr, 0, 256);
-    
-    sprintf(PAD_SendStr, "ff0000,%bu;00ff00,%bu;0000ff,%bu;", f1, f2, f3);
-    printf("res:%s\r\n", PAD_SendStr);
-    Uart3SendStr(PAD_SendStr);
-    wptr = 0;
-    memset(buffer, 0, 256);
-}
-
 
 void LED_Exp(uint32_t Color, uint32_t Freq, uint8_t Count) {
 	switch (Color) {
 		case 0xff0000:		// RED
-			LED_F(1, Freq & (0x3ff << 0), 100);
+			LED_F(1, (Freq >> 20) & 0x3ff, 100);
 		break;
 		
 		case 0x00ff00:		// GREND
-			LED_F(2, Freq & (0x3ff << 10), 100);
+			LED_F(2, (Freq >> 10) & 0x3ff, 100);
 		break;
 		
 		case 0x0000ff:		// BLUE
-			LED_F(3, Freq & (0x3ff << 20), 100);
+			LED_F(3, (Freq >> 0) & 0x3ff, 100);
 		break;
 		
 		default:
@@ -98,7 +88,10 @@ void LED_Exp(uint32_t Color, uint32_t Freq, uint8_t Count) {
 #define TASK_LED			0x00
 void RunTask(void) {
 	uint8_t i = 0;
-	
+    uint16_t index = 0;
+    BOTP b;
+	uint8_t c = 0;
+    
 	for (i = 0;i < 1;i++) {
 		switch (i) {
 			case TASK_LED:
@@ -106,27 +99,40 @@ void RunTask(void) {
 					printf("Color:%08lx\r\n", LED.Color);
 					printf("Freq:%08lx\r\n", LED.Freq);
 					LED_Exp(LED.Color & 0x00ffffff, LED.Freq & 0x3fffffff, (LED.Freq >> 29) & 0x03);
-					LED.Color |= 0xff000000;
-				}
+					// 赋值给结果数组
+                    LEDRes[(LED.Freq >> 29) & 0x03].Color = LED.Color;
+                    LEDRes[(LED.Freq >> 29) & 0x03].Freq  = LED.Freq & 0x3fffffff;
+                    // 清掉标志
+                    LED.Color |= 0xff000000;
+				} else if (((LED.Color >> 24) & 0xff) == 0x01) { // LED 返回结果，返回结果，利用LED的结构体，进行返回
+                    // 初始化BOTP协议
+                    BOTP_Init(&b, BOTP_MAC_ADDR, device[0].Mac);
+                    // 填充结果数组
+                    for (c = 0;c < 4;c++) {
+                        if (LEDRes[c].Color != 0) {
+                            BOTP_ObjToObjNotNull(&(b.Pack), index, EXEC_OBJ_CMD_LED_RET, (uint8_t *)(&(LEDRes[c])), sizeof(LEDRes[0]));
+                            index += sizeof(LEDRes);
+                        }
+                    }
+                    printf("index:%u\r\n", index);
+                    // 设置长度
+                    BOTP_SetPackLength(&b, index);
+                    b.Msg.BusID = device[0].Msg.BusID;
+                    b.Msg.Type = device[0].Msg.Type;
+                    BOTP_SendData(&b);
+                    // 清掉标志
+                    LED.Color |= 0xff000000;
+                    // 清空数组
+                    memset(LEDRes, 0, sizeof(LEDRes));
+                }
 			break;
 		}
 	}
 }
 
 
-#define bus1        BUS_UART
-#define msg_type    MSG_TYPE_USER
-#define saddr	    0x88888888
-#define msgcount	0x25
-#define daddr		0x11111111
-#define qcmd		QUICK_CMD_FIND
-#define plen		0x80
-#define pt		    PACK_TYPE_CLCT
-
 void main(void) {
-    BOTP b;
     BOTP * pb;
-	Pack_t *p = &(b.Pack);
     
 	uint16_t i = 0, j;
 	uint8_t index = 0;
@@ -135,6 +141,7 @@ void main(void) {
     
     LED_Init();
     UartInit();
+    MAX485_Init();
     DelayInit();
 	
 	
@@ -143,7 +150,8 @@ void main(void) {
 	
 	Delay500ms();
     printf("uart Init\r\n");
-	BOTP_Init(&b);
+    wptr = 0;
+    
 	ExecObjInit(&(ExecObjArray[0]),		// 外部obj 
 				EXEC_OBJ_CMD_LED, 		// id
 				sizeof(LEDItem), 		// len
@@ -151,104 +159,9 @@ void main(void) {
 	
 	printf("led:%bx\r\n", sizeof(LEDItem));
     
-//    while (1) {
-//        for (k = 1;k < 4;k++) {
-//            for (i = 0;i < 110;i+=10) {
-//                LED_F(k, i, 100);
-//                Delay500ms();
-//                Delay500ms();
-//                Delay500ms();
-//                Delay500ms();
-//                Delay500ms();
-//            }
-//        }
-//        printf("uart Init\r\n");
-//    }
-    
-    
-//	Delay500ms();
-//    printf("uart Init\r\n");
-//	
-//    if (1) {
-//        memset(&b, 0, sizeof(b));
-//        ((uint8_t *)(&(b.Header)))[0] = 'B';
-//        ((uint8_t *)(&(b.Header)))[1] = 'O';
-//        ((uint8_t *)(&(b.Header)))[2] = 'T';
-//        ((uint8_t *)(&(b.Header)))[3] = 'P';
-//        b.Family = 0xffff;
-//        b.Version = VERSION_DEV;
-//        b.Msg.BusID = BUS_UART;
-//        b.Msg.Type = MSG_TYPE_USER;
-//        b.SMacAddr = 0x12345678;
-//        b.MsgCount = 0x01;
-//        b.DMacAddr = BOTP_MAC_ADDR;
-//        b.QuickCmd = QUICK_CMD_USER;
-//        b.PackLen = 0x30;
-//        b.Pack.Crc16 = 0x1234;
-//        
-//        wc_assert(BOTP_CheckFormat(b));
-//        
-//        wc_assert(BOTP_CheckVersionVaild(b));
-//        wc_assert(BOTP_CheckFamilyVaild(b));
-//        wc_assert(BOTP_CheckBusID(b));
-//        wc_assert(BOTP_CheckMsgType(b));
-//        wc_assert(BOTP_CheckQuickCmd(b));
-//        wc_assert(BOTP_CheckDMacAddr(b));
-//        
-//        BOTP_SetBusID(&b, bus1);
-//        BOTP_SetMsgType(&b, msg_type);
-//        BOTP_SetSMacAddr(&b, saddr);
-//        BOTP_SetMsgCount(&b, msgcount);
-//        BOTP_SetDMacAddr(&b, daddr);
-//        BOTP_SetQuickCmd(&b, qcmd);
-//        BOTP_SetPackLength(&b, plen);
-//                                       
-//        BOTP_SetPackDataCrc16(&(b.Pack), 0x7777);
-//        
-//        wc_assert(bus1 == BOTP_GetBusID(b));
-//        wc_assert(msg_type == BOTP_GetMsgType(b));
-//        wc_assert(saddr == BOTP_GetSMacAddr(b));
-//        wc_assert(msgcount == BOTP_GetMsgCount(b));
-//        wc_assert(daddr == BOTP_GetDMacAddr(b));
-//        wc_assert(qcmd == BOTP_GetQuickCmd(b));
-//        wc_assert(plen == BOTP_GetPackLength(b));
-//        wc_assert(0x7777 == BOTP_GetPackDataCrc16(b.Pack));
-//    }
-	// i = BOTP_PackDataFill(&(b.Pack));
-	// BOTP_SetPackLength(&b, i);
-	// for(j = 0;j < i+0x1a;j++) {
-		// printf("%02bx ", ((uint8_t *)(&b))[j]);
-	// }
-	// printf("\r\n");
-    // printf("len;%u\r\n", i);
-	// ExtDev_Init(&(device[0]));
-    
-	// if (0xff == ExtDev_GetDeviceIndexByMac(b.DMacAddr)) { // 如果当前 MAC 没有在设备数组中 
-		// index = ExtDev_GetDeviceIdleIndex();	 // 寻找下一个可用的设备数组索引值 
-		// if (0xff != index) {	// 当前设备总线索引值是否可用 
-			// ExtDev_SetMsgType(&(device[index]), b.Msg.Type);
-			// ExtDev_SetBusId(&(device[index]), b.Msg.BusID);
-			// ExtDev_SetMacCrc32(&(device[index]), b.DMacAddr);
-		// }
-	// }
-	// printf("bus:%bx\r\n", device[0].Msg.BusID);
-	// printf("type:%bx\r\n", device[0].Msg.Type);
-	// printf("index:%bx\r\n", device[0].Index);
-	// printf("mac:%lx\r\n", device[0].Mac);
-	
-	
-	
-	// index = ExtDev_GetDeviceIndexByMac(b.DMacAddr);
-	// printf("index:%02bx\r\n", index); 
-	
-	// BOTP_SendData(&b);
-	// printf("\r\n"); 
-	
-	// printf("\r\n");
-	// BOTP_PackExtTest(p, b.PackLen);
-	
     while (1) {
         if (wptr != rptr) {
+            printf("%u\r\n", wptr);
             if (wptr > 0x1A) {
                 pb = (BOTP *)buffer;
                 if (wptr >= (pb->PackLen + 0x1C)) {
@@ -265,14 +178,4 @@ void main(void) {
 		
 		RunTask();
     }
-    
-    // while (1) {
-        // if (wptr != rptr) {
-            // OLED_Clear();
-            // LED_Exp();
-        // } else {
-            // OLED_DisplayLogo();
-            // OLED_Refresh_Gram();
-        // }
-    // }
 }

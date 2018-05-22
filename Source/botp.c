@@ -2,6 +2,8 @@
 #include "string.h"
 #include "stdlib.h"
 #include "botp.h"
+#include "uart.h"
+#include "max485.h"
 
 #define BIG_ENCODE
 //#define SMALL_ENCODE
@@ -56,9 +58,11 @@ uint16_t CRC16_Calc(char * CrcArray, uint16_t CrcLen) {
 void BOTP_PackGetItemData(Pack_t * p, uint8_t index, uint8_t * dat, uint8_t len) {
 	uint8_t i = 0;
 	
-	for (i = 0;i < len;i++) {
-		 dat[i] = p->Data[index++];
-	}
+    if (dat != 0) {
+        for (i = 0;i < len;i++) {
+             dat[i] = p->Data[index++];
+        }
+    }
 }
 
 void BOTP_PackAddItem(Pack_t * p, uint8_t index, uint8_t type, uint8_t * value, uint8_t len) {
@@ -66,18 +70,22 @@ void BOTP_PackAddItem(Pack_t * p, uint8_t index, uint8_t type, uint8_t * value, 
 	
 	p->Data[index++] = type & 0xff;
 	 
-	for (i = 0;i < len;i++) {
-		p->Data[index++] = value[i];
-	}
+    if (value != 0) {
+        for (i = 0;i < len;i++) {
+            p->Data[index++] = value[i];
+        }
+    }
 	
 }
 #elif defined SMALL_ENCODE
 void BOTP_PackGetItemData(Pack_t * p, uint8_t index, uint8_t * dat, uint8_t len) {
 	uint8_t i = 0;
 	
-	for (i = 0;i < len;i++) {
-		 dat[i] = p->Data[len - 1 - i + index];
-	}
+    if (dat != 0) {
+        for (i = 0;i < len;i++) {
+             dat[i] = p->Data[len - 1 - i + index];
+        }
+    }
 }
 void BOTP_PackAddItem(Pack_t * p, uint8_t index, uint8_t type, uint8_t * value, uint8_t len) {
 	int8_t i = 0;
@@ -85,117 +93,15 @@ void BOTP_PackAddItem(Pack_t * p, uint8_t index, uint8_t type, uint8_t * value, 
 	 
 	p->Data[index++] = type & 0xff;
 	
-	for (i = 0;i < len;i++) {
-		p->Data[index++] = value[len - 1 - i];
-	}
-	
+    if (value != 0) {
+        for (i = 0;i < len;i++) {
+            p->Data[index++] = value[len - 1 - i];
+        }
+    }
 }
 #else
 	#error "Please define encode"
 #endif											
-
-#define BOTP_PackAddZore(p, index, type)			do { \
-														BOTP_PackAddItem(p, index, type, (uint8_t *)(0), 0); \
-													} while (0)
-
-
-#define BOTP_PackAddByte(p, index, type, byte)		do { \
-														BOTP_PackAddItem(p, index, type, (uint8_t *)(byte), 1); \
-													} while (0)
-
-#define BOTP_PackAddWord(p, index, type, word)		do { \
-														BOTP_PackAddItem(p, index, type, (uint8_t *)(word), 2); \
-													} while (0)
-													
-#define BOTP_PackAddInt(p, index, type, int)		do { \
-														BOTP_PackAddItem(p, index, type, (uint8_t *)(int), 4); \
-													} while (0)
-
-
-#define BOTP_PackAddLong(p, index, type, long)		do { \
-														BOTP_PackAddItem(p, index, type, (uint8_t *)(long), 8); \
-													} while (0)
-													
-#define BOTP_PackAddDate(p, index, type, date)		do { \
-														BOTP_PackAddItem(p, index, type, (uint8_t *)(date), 3); \
-													} while (0)
-#define BOTP_PackAddTime(p, index, type, time)		do { \
-														BOTP_PackAddItem(p, index, type, (uint8_t *)(time), 3); \
-													} while (0)
-													
-#define BOTP_PackAddDateTime(p, index, type, datetime)	do { \
-															BOTP_PackAddItem(p, index, type, (uint8_t *)(datetime), 6); \
-														} while (0)
-													
-#define BOTP_PackAddUuid(p, index, type, uuid)		do { \
-														BOTP_PackAddItem(p, index, type, (uint8_t *)(uuid), 16); \
-													} while (0) 
-													
-#define BOTP_ObjToNull(p, 	index)				BOTP_PackAddZore(p, index, PACK_TYPE_NULL)
-#define BOTP_ObjToTrue(p, 	index)				BOTP_PackAddZore(p, index, PACK_TYPE_TRUE)
-#define BOTP_ObjToFalse(p, 	index)				BOTP_PackAddZore(p, index, PACK_TYPE_FALSE)
-#define BOTP_ObjToBool(p, 	index, value)		BOTP_PackAddZore(p, index, ((value)?0x01:0x02))
-#define BOTP_ObjToByte(p, 	index, value)		BOTP_PackAddByte(p, index, PACK_TYPE_BYTE, 		value)
-#define BOTP_ObjToShort(p, 	index, value)		BOTP_PackAddWord(p, index, PACK_TYPE_SHORT, 	value)
-#define BOTP_ObjToInt(p,	index, value)		BOTP_PackAddInt( p, index, PACK_TYPE_INT,		value)
-#define BOTP_ObjToLong(p,  	index, value)		BOTP_PackAddLong(p, index, PACK_TYPE_LONG,		value)
-#define BOTP_ObjToFloat(p, 	index, value)		BOTP_PackAddInt( p, index, PACK_TYPE_FLOAT,		value)
-#define BOTP_ObjToDouble(p,	index, value)		BOTP_PackAddLong(p, index, PACK_TYPE_DOUBLE,	value)
-#define BOTP_ObjToDate(p,   index, value)		BOTP_PackAddDate(p, index, PACK_TYPE_DATE, 		value) 
-#define BOTP_ObjToTime(p,   index, value)		BOTP_PackAddTime(p, index, PACK_TYPE_TIME, 		value) 
-#define BOTP_ObjToDateTime(p,index, value)		BOTP_PackAddDateTime(p, index, PACK_TYPE_DATETIME,	value) 
-#define BOTP_ObjToUuid(p,	index, value)		BOTP_PackAddUuid(p, index, PACK_TYPE_UUID,		value) 
-
-
-#define BOTP_PackGetItemType(p, index)				((p)->Data[(index)])
-
-#define BOTP_PackGetZore(p, index)					((p)->Data[(index)])
-
-#define BOTP_PackGetByte(p, index, byte)			do { \
-														BOTP_PackGetItemData(p, index, (uint8_t *)(byte), 1); \
-													} while (0)
-
-#define BOTP_PackGetWord(p, index, word)			do { \
-														BOTP_PackGetItemData(p, index, (uint8_t *)(word), 2); \
-													} while (0)
-													
-#define BOTP_PackGetInt(p, index, int)				do { \
-														BOTP_PackGetItemData(p, index, (uint8_t *)(int), 4); \
-													} while (0)
-
-
-#define BOTP_PackGetLong(p, index, long)			do { \
-														BOTP_PackGetItemData(p, index, (uint8_t *)(long), 8); \
-													} while (0)
-													
-#define BOTP_PackGetDate(p, index, date)			do { \
-														BOTP_PackGetItemData(p, index, (uint8_t *)(date), 3); \
-													} while (0)
-#define BOTP_PackGetTime(p, index, time)			do { \
-														BOTP_PackGetItemData(p, index, (uint8_t *)(time), 3); \
-													} while (0)
-													
-#define BOTP_PackGetDateTime(p, index, datetime)	do { \
-															BOTP_PackGetItemData(p, index, (uint8_t *)(datetime), 6); \
-														} while (0)
-													
-#define BOTP_PackGetUuid(p, index, uuid)			do { \
-														BOTP_PackGetItemData(p, index, (uint8_t *)(uuid), 16); \
-													} while (0) 
-													
-#define BOTP_NullToObj(p, 	index)				BOTP_PackGetZore(p, index)
-#define BOTP_BoolToObj(p, 	index)				BOTP_PackGetZore(p, index)
-#define BOTP_ByteToObj(p, 	index, value)		BOTP_PackGetByte(p, index,	value)
-#define BOTP_ShortToObj(p, 	index, value)		BOTP_PackGetWord(p, index, 	value)
-#define BOTP_IntToObj(p,	index, value)		BOTP_PackGetInt( p, index,	value)
-#define BOTP_LongToObj(p,  	index, value)		BOTP_PackGetLong(p, index,	value)
-#define BOTP_FloatToObj(p, 	index, value)		BOTP_PackGetInt( p, index,	value)
-#define BOTP_DoubleToObj(p,	index, value)		BOTP_PackGetLong(p, index,	value)
-#define BOTP_DateToObj(p,   index, value)		BOTP_PackGetDate(p, index,	value) 
-#define BOTP_TimeToObj(p,   index, value)		BOTP_PackGetTime(p, index,	value) 
-#define BOTP_DateTimeToObj(p,index, value)		BOTP_PackGetDateTime(p, index,	value) 
-#define BOTP_UuidToObj(p,	index, value)		BOTP_PackGetUuid(p, index,	value) 
-
 
 ExtDev device[8] = {
 	{{BUS_UART, MSG_TYPE_USER},     0,  0x11111111},
@@ -483,20 +389,21 @@ uint8_t BOTP_BusCAN(BOTP botp) {
 	return BOTP_OK;
 }
 
-void BOTP_Init(BOTP * botp) {
+void BOTP_Init(BOTP * botp, uint32_t SrcMacAddr, uint32_t DecMacAddr) {
 	memset(botp, 0, sizeof(BOTP));
 	botp->Header 			= HEADER;
 	botp->Family			= FAMILY;
 	botp->Version			= VERSION;
-	botp->SMacAddr			= BOTP_MAC_ADDR;
+	botp->SMacAddr			= SrcMacAddr;
 	botp->MsgCount			= 0x0000;
-	botp->DMacAddr			= BOTP_MAC_ADDR;
+	botp->DMacAddr			= DecMacAddr;
 }
 
 uint8_t BOTP_Exec(BOTP * botp) {
 	uint8_t index = 0x00;
 	// 无效的格式 
 	if (0 == BOTP_CheckFormat(*botp)) {
+        printf("format;%lx version;%lx\r\n", botp->Header, botp->Version);
 		return BOTP_ERROR_FORMAT;
 	}
 	// 无效的协议 
@@ -509,8 +416,7 @@ uint8_t BOTP_Exec(BOTP * botp) {
 		index = ExtDev_GetDeviceIndexByMac(botp->DMacAddr);
         if (BOTP_ERROR_INDEX != index) { // 可以在设备表中找到设备
             botp->Msg.BusID = device[index].Msg.BusID;
-            botp->MsgCount = device[index].Msg.Type;
-            // BOTP_PackExtTest(&(botp->Pack), botp->PackLen);
+            botp->Msg.Type = device[index].Msg.Type;
             return BOTP_SendData(botp);
         } else {
             index = ExtDev_GetDeviceIdleIndex(); // 获取空闲设备索引
@@ -534,38 +440,7 @@ uint8_t BOTP_Exec(BOTP * botp) {
 			printf("ext error\r\n");
 		}
 	}
-	
-//	// 数据校验不对 
-//	if (0 == BOTP_CheckCrc(*botp)) {
-//		return BOTP_ERROR_DATA_CRC16;
-//	} 
-//	
-//	switch (BOTP_GetBusID(*botp)) {
-//		case BUS_NET:
-//			BOTP_BusNet(*botp);
-//		break;
-//		
-//		case BUS_SPI:
-//			BOTP_BusSPI(*botp);
-//		break;
-//		
-//		case BUS_UART:
-//			BOTP_BusUart(*botp);
-//		break;
-//		
-//		case BUS_I2C:
-//			BOTP_BusI2C(*botp);
-//		break;
-//		
-//		case BUS_CAN:
-//			BOTP_BusCAN(*botp);
-//		break;
-//		
-//		default:
-//		return BOTP_ERROR_MSG_BUS; 
-//	}
-    
-   
+	  
 	
     return BOTP_OK;	
 }
@@ -711,6 +586,7 @@ uint8_t BOTP_PackExtTest(Pack_t * p, uint16_t len) {
 			
 			default:
 				printf("cmd default: %bx\r\n", p->Data[i]);
+                item_len = 1;
 			break;
 		}
 		i += item_len;
@@ -728,33 +604,23 @@ uint8_t BOTP_PackExtTest(Pack_t * p, uint16_t len) {
 uint8_t BOTP_SendData(BOTP * b) {
 	uint8_t busId = b->Msg.BusID;
 	uint8_t msgType = b->Msg.Type;
+    uint8_t Index = ExtDev_GetDeviceIndexByMac(b->DMacAddr);
 	uint16_t i;
 	
 	wc_assert(IS_BUS(busId));
 	wc_assert(IS_MSG_TYPE(msgType));
-	
+	printf("b->DMacAddr:%lx\r\n", b->DMacAddr);
 	switch (busId) {
 		case BUS_UART:
-			switch (msgType) {
-				case MSG_TYPE_USER:
-					for (i = 0;i < 0x1A;i++) {
-						if ((i & 0x00ff) == 0) {
-							printf("\r\n");
-						}
-						printf("%02bx ", ((uint8_t *)(b))[i]);
-					}
-					if (b->PackLen != 0) {
-						for (;i < (b->PackLen + 0x1C);i++) {
-							if ((i & 0x00ff) == 0) {
-								printf("\n");
-							}
-							printf("%02bx ", ((uint8_t *)(b))[i]);
-						}
-					}
+			switch (device[Index].Index) {
+				case 0:
+                    MAX485_WriteHex((uint8_t *)b, BOTP_GetPackLength(*b) + 0x1C);
+					printf("dev index:%02bx\r\n", Index);
 				break;
+                
 				default:
-					printf("msgType:%02bx\r\n", msgType);
-                    return BOTP_ERROR_TYPE;
+					printf("Uart index:%02bx\r\n", Index);
+                    return BOTP_ERROR_MSG_BUS;
 				break;
 			}
 		break;
