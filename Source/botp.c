@@ -610,6 +610,9 @@ uint8_t BOTP_SendData(BOTP * b) {
 	wc_assert(IS_BUS(busId));
 	wc_assert(IS_MSG_TYPE(msgType));
 	printf("b->DMacAddr:%lx\r\n", b->DMacAddr);
+    for (i = 0;i < BOTP_GetPackLength(*b) + 0x1C;i++) {
+        printf("%02bx ", ((uint8_t *)b)[i]);
+    }
 	switch (busId) {
 		case BUS_UART:
 			switch (device[Index].Index) {

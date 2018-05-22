@@ -113,10 +113,12 @@ void RunTask(void) {
                             BOTP_ObjToObjNotNull(&(b.Pack), index, EXEC_OBJ_CMD_LED_RET, (uint8_t *)(&(LEDRes[c])), sizeof(LEDRes[0]));
                             index += sizeof(LEDRes);
                         }
-                    }
+                    }    
                     printf("index:%u\r\n", index);
                     // ÉèÖÃ³¤¶È
                     BOTP_SetPackLength(&b, index);
+                    BOTP_ObjToNull(&(b.Pack), index++);
+                    BOTP_ObjToNull(&(b.Pack), index++);
                     b.Msg.BusID = device[0].Msg.BusID;
                     b.Msg.Type = device[0].Msg.Type;
                     BOTP_SendData(&b);
@@ -161,7 +163,6 @@ void main(void) {
     
     while (1) {
         if (wptr != rptr) {
-            printf("%u\r\n", wptr);
             if (wptr > 0x1A) {
                 pb = (BOTP *)buffer;
                 if (wptr >= (pb->PackLen + 0x1C)) {
