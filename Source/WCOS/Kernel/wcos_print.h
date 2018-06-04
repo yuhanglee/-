@@ -1,7 +1,7 @@
 #ifndef __WCOS_PRINT_H__
 #define __WCOS_PRINT_H__
 
-#include "WCOS_print.h"
+#include "WCOS_config.h"
 
 #define WC_ERR_LEVEL       0
 

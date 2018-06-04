@@ -114,8 +114,7 @@ void Uart3SendHex(uint8_t * buf, uint16_t len) {
 }
 
 void Uart4Isr(void) interrupt 18 using 1 {
-    if (S4CON & 0x01)
-    {
+    if (S4CON & 0x01) {
         S4CON &= ~0x01;
     }
 }

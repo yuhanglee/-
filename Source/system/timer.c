@@ -44,14 +44,10 @@ void TIM3_IRQ(void)         interrupt 19 {
                 LED_B_RESET();
             break;
             
-            case 4:
+            default:
                 LED_G_RESET();
                 LED_R_RESET();
                 LED_B_RESET();
-            break;
-            
-            default:
-                
             break;
         }
     } else {

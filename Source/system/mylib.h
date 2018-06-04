@@ -4,7 +4,6 @@
 #include "stdio.h"
 #include "stc8.h"
 
-#define DEBUG
 
 typedef unsigned char   uint8_t;
 typedef unsigned short  uint16_t;
@@ -31,15 +30,35 @@ typedef int32_t         s32;
 
 
 
+//#define DEBUG
+
+#ifdef DEBUG
+    #define DEBUG_PRINT                                 // ����������
+#endif
+
+
+#ifdef DEBUG_PRINT
+    #define print_error            printf
+    #define print_info             printf
+    #define print_warn             printf
+    #define print_debug            printf
+#else 
+
+	#define print_error				
+	#define print_info
+	#define print_warn
+	#define print_debug
+#endif
+
 
 #ifdef DEBUG
     #define wc_assert(n)    \
     do {\
         if (!(n)) {\
             if (__LINE__ > 255) { \
-                printf("%s %u\n", __FILE__, __LINE__);\
+                print_error("%s %u\n", __FILE__, __LINE__);\
             } else { \
-                printf("%s %bu\n", __FILE__, __LINE__);\
+                print_error("%s %bu\n", __FILE__, __LINE__);\
             } \
             while (1);\
         }\

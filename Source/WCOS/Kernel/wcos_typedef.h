@@ -30,9 +30,9 @@ typedef uint8_t         		size_t;
     do {\
         if (!(t)) {\
             if (__LINE__ > 255) { \
-                printf("%s %u\n", __FILE__, __LINE__);\
+                print_error("%s %u\n", __FILE__, __LINE__);\
             } else { \
-                printf("%s %bu\n", __FILE__, __LINE__);\
+                print_error("%s %bu\n", __FILE__, __LINE__);\
             } \
             while (1);\
         }\

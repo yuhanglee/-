@@ -67,7 +67,7 @@ void DelayInit(void) {
 void LED_Exp(uint32_t Color, uint32_t Freq, uint8_t Count) {
 	switch (Color) {
 		case 0xff0000:		// RED
-			LED_F(1, (Freq >> 20) & 0x3ff, 100);
+			LED_F(3, (Freq >> 20) & 0x3ff, 100);
 		break;
 		
 		case 0x00ff00:		// GREND
@@ -75,13 +75,13 @@ void LED_Exp(uint32_t Color, uint32_t Freq, uint8_t Count) {
 		break;
 		
 		case 0x0000ff:		// BLUE
-			LED_F(3, (Freq >> 0) & 0x3ff, 100);
+			LED_F(1, (Freq >> 0) & 0x3ff, 100);
 		break;
 		
 		default:
+			LED_F(0, 0, 100); // 停止闪烁
 		break;
 	}
-	printf("Color:%08lx\r\n", Freq & (0x3ff << 0));
 					
 }
 
@@ -96,12 +96,10 @@ void RunTask(void) {
 		switch (i) {
 			case TASK_LED:
 				if (((LED.Color >> 24) & 0xff) == 0x00) { // LED 有数据传输过来
-					printf("Color:%08lx\r\n", LED.Color);
-					printf("Freq:%08lx\r\n", LED.Freq);
-					LED_Exp(LED.Color & 0x00ffffff, LED.Freq & 0x3fffffff, (LED.Freq >> 29) & 0x03);
+					LED_Exp(LED.Color & 0x00ffffff, LED.Freq & 0x3fffffff, (LED.Freq >> 30) & 0x03);
 					// 赋值给结果数组
-                    LEDRes[(LED.Freq >> 29) & 0x03].Color = LED.Color;
-                    LEDRes[(LED.Freq >> 29) & 0x03].Freq  = LED.Freq & 0x3fffffff;
+                    LEDRes[(LED.Freq >> 30) & 0x03].Color = LED.Color;
+                    LEDRes[(LED.Freq >> 30) & 0x03].Freq  = LED.Freq & 0x3fffffff;
                     // 清掉标志
                     LED.Color |= 0xff000000;
 				} else if (((LED.Color >> 24) & 0xff) == 0x01) { // LED 返回结果，返回结果，利用LED的结构体，进行返回
@@ -111,10 +109,9 @@ void RunTask(void) {
                     for (c = 0;c < 4;c++) {
                         if (LEDRes[c].Color != 0) {
                             BOTP_ObjToObjNotNull(&(b.Pack), index, EXEC_OBJ_CMD_LED_RET, (uint8_t *)(&(LEDRes[c])), sizeof(LEDRes[0]));
-                            index += sizeof(LEDRes);
+                            index += (sizeof(LEDRes[0]) + 1);
                         }
-                    }    
-                    printf("index:%u\r\n", index);
+                    }
                     // 设置长度
                     BOTP_SetPackLength(&b, index);
                     BOTP_ObjToNull(&(b.Pack), index++);
@@ -122,6 +119,9 @@ void RunTask(void) {
                     b.Msg.BusID = device[0].Msg.BusID;
                     b.Msg.Type = device[0].Msg.Type;
                     BOTP_SendData(&b);
+                    // 停止闪烁
+                    LED_Exp(0, 0, 0);
+					
                     // 清掉标志
                     LED.Color |= 0xff000000;
                     // 清空数组
@@ -146,28 +146,28 @@ void main(void) {
     MAX485_Init();
     DelayInit();
 	
-	
+	memset(LEDRes, 0, sizeof(LEDRes));
     EA = 1;
 	
-	
 	Delay500ms();
-    printf("uart Init\r\n");
+    print_debug("uart Init\r\n");
     wptr = 0;
     
+		
 	ExecObjInit(&(ExecObjArray[0]),		// 外部obj 
 				EXEC_OBJ_CMD_LED, 		// id
 				sizeof(LEDItem), 		// len
 				(void *)(&LED));		// data
 	
-	printf("led:%bx\r\n", sizeof(LEDItem));
-    
+	print_debug("led:%bx\r\n", sizeof(LEDItem));
+
     while (1) {
         if (wptr != rptr) {
-            if (wptr > 0x1A) {
+			if (wptr > 0x1A) {
                 pb = (BOTP *)buffer;
                 if (wptr >= (pb->PackLen + 0x1C)) {
                     Delay_ms(10);
-                    printf("ret:%bu\r\n", BOTP_Exec(pb));
+                    print_debug("ret:%bu\r\n", BOTP_Exec(pb));
                     for (i = 0;i < 256;i++) {
                         buffer[i] = 0x00;
                     }

@@ -403,7 +403,7 @@ uint8_t BOTP_Exec(BOTP * botp) {
 	uint8_t index = 0x00;
 	// 无效的格式 
 	if (0 == BOTP_CheckFormat(*botp)) {
-        printf("format;%lx version;%lx\r\n", botp->Header, botp->Version);
+        print_error("format;%lx version;%lx\r\n", botp->Header, botp->Version);
 		return BOTP_ERROR_FORMAT;
 	}
 	// 无效的协议 
@@ -427,17 +427,17 @@ uint8_t BOTP_Exec(BOTP * botp) {
                 ExtDev_SetMacCrc32(&(device[index]), botp->SMacAddr); 
                 return BOTP_OK;
             } else {
-                printf("idle device index error\r\n");
+                print_error("idle device index error\r\n");
                 return BOTP_ERROR_INDEX;
             }
-            printf("idle device index error\r\n");
+            print_error("idle device index error\r\n");
         }
 		return BOTP_ERROR_DMAC_ADDR;
 	} else { // 进行本机解析
 		 if (0 == BOTP_PackExtTest(&(botp->Pack), botp->PackLen)) {
-			printf("ext ok\r\n");
+			print_debug("ext ok\r\n");
 		} else {
-			printf("ext error\r\n");
+			print_error("ext error\r\n");
 		}
 	}
 	  
@@ -490,7 +490,7 @@ uint16_t BOTP_PackDataFill(Pack_t * p) {
 	BOTP_ObjToBool(p, i, i % 2); i+=1;
 	BOTP_ObjToDate(p, i, data_ch); i+=4;
 		
-	printf("%bu\r\n", i);
+	print_debug("%bu\r\n", i);
 	return i;
 } 
 
@@ -503,81 +503,81 @@ uint8_t BOTP_PackExtTest(Pack_t * p, uint16_t len) {
 	do {
 		switch (p->Data[i]) {
 			case PACK_TYPE_NULL:
-				printf("NULL\r\n");
+				print_debug("NULL\r\n");
 				item_len = 1;
 			break;
 			
 			case PACK_TYPE_TRUE:
 			case PACK_TYPE_FALSE:
-				printf("%bx\r\n", BOTP_BoolToObj(p, i));
+				print_debug("%bx\r\n", BOTP_BoolToObj(p, i));
 				item_len = 1;
 			break;
 			
 			case PACK_TYPE_BYTE:
 				BOTP_ByteToObj(p, i+1, res);
-				printf("byte:\t%bx\r\n", *((uint8_t *)(res)));
+				print_debug("byte:\t%bx\r\n", *((uint8_t *)(res)));
 				item_len = 2;
 			break;
 			case PACK_TYPE_SHORT:
 				BOTP_ShortToObj(p, i+1, res);
-				printf("short:\t%x\r\n", *((uint16_t *)(res)));
+				print_debug("short:\t%x\r\n", *((uint16_t *)(res)));
 				item_len = 3;
 			break;
 			case PACK_TYPE_INT:
 				BOTP_IntToObj(p, i+1, res);
-				printf("int:\t%lx\r\n", *((uint32_t *)(res)));
+				print_debug("int:\t%lx\r\n", *((uint32_t *)(res)));
 				item_len = 5;
 			break;
 			case PACK_TYPE_LONG:
 				BOTP_LongToObj(p, i+1, res);
-				printf("long:\t%lx\r\n", *((uint32_t *)(res)));
+				print_debug("long:\t%lx\r\n", *((uint32_t *)(res)));
 				item_len = 9;
 			break;
 			case PACK_TYPE_FLOAT:
 				BOTP_FloatToObj(p, i+1, res);
-				printf("float:\t%f\r\n", *((float *)(res)));
+				print_debug("float:\t%f\r\n", *((float *)(res)));
 				item_len = 5;
 			break;
 			case PACK_TYPE_DOUBLE:
 				BOTP_DoubleToObj(p, i+1, res);
-				printf("double:\t%f\r\n", *((double *)(res)));
+				print_debug("double:\t%f\r\n", *((double *)(res)));
 				item_len = 9;
 			break;
 			case PACK_TYPE_DATE:
 				BOTP_DateToObj(p, i+1, res);
-				printf("date:");
+				print_debug("date:");
 				item_len = 4;
 				for (u_8 = 0;u_8 < 3;u_8++) {
-					printf("%bx ", res[u_8]);
+					print_debug("%bx ", res[u_8]);
 				}
-				printf("\r\n");
+				print_debug("\r\n");
 			break;
 			case PACK_TYPE_TIME:
 				BOTP_TimeToObj(p, i+1, res);
-				printf("time:");
+				print_debug("time:");
 				item_len = 4;
 				for (u_8 = 0;u_8 < 3;u_8++) {
-					printf("%bx ", res[u_8]);
+					print_debug("%bx ", res[u_8]);
 				}
-				printf("\r\n");
+				print_debug("\r\n");
 			break;
 			case PACK_TYPE_DATETIME:
 				BOTP_DateTimeToObj(p, i+1, res);
-				printf("datetime:");
+				print_debug("datetime:");
 				item_len = 7;
 				for (u_8 = 0;u_8 < 6;u_8++) {
-					printf("%bx ", res[u_8]);
+					print_debug("%bx ", res[u_8]);
 				}
-				printf("\r\n");
+				print_debug("\r\n");
 			break;
 			case PACK_TYPE_UUID:
 				BOTP_UuidToObj(p, i+1, res);
-				printf("uuid:");
+				print_debug("uuid:");
 				item_len = 17;
 				for (u_8 = 0;u_8 < 16;u_8++) {
-					printf("%bx ", res[u_8]);
+					print_debug("%bx ", res[u_8]);
 				}
-				printf("\r\n");
+				print_debug("\r\n");
 			break;
 			
 			case PACK_TYPE_OBJ_NOT_NULL:
@@ -585,7 +585,7 @@ uint8_t BOTP_PackExtTest(Pack_t * p, uint16_t len) {
 			break;
 			
 			default:
-				printf("cmd default: %bx\r\n", p->Data[i]);
+				print_debug("cmd default: %bx\r\n", p->Data[i]);
                 item_len = 1;
 			break;
 		}
@@ -597,7 +597,7 @@ uint8_t BOTP_PackExtTest(Pack_t * p, uint16_t len) {
 			break;
         }
 	} while (len);
-    printf("end%x\r\n", len);
+    print_debug("end%x\r\n", len);
 	return ret;
 }
 
@@ -609,7 +609,7 @@ uint8_t BOTP_SendData(BOTP * b) {
 	
 	wc_assert(IS_BUS(busId));
 	wc_assert(IS_MSG_TYPE(msgType));
-	printf("b->DMacAddr:%lx\r\n", b->DMacAddr);
+	print_debug("b->DMacAddr:%lx\r\n", b->DMacAddr);
     for (i = 0;i < BOTP_GetPackLength(*b) + 0x1C;i++) {
         printf("%02bx ", ((uint8_t *)b)[i]);
     }
@@ -618,18 +618,18 @@ uint8_t BOTP_SendData(BOTP * b) {
 			switch (device[Index].Index) {
 				case 0:
                     MAX485_WriteHex((uint8_t *)b, BOTP_GetPackLength(*b) + 0x1C);
-					printf("dev index:%02bx\r\n", Index);
+					print_debug("dev index:%02bx\r\n", Index);
 				break;
                 
 				default:
-					printf("Uart index:%02bx\r\n", Index);
+					print_error("Uart index:%02bx\r\n", Index);
                     return BOTP_ERROR_MSG_BUS;
 				break;
 			}
 		break;
 		
 		default:
-			printf("busId:%02bx\r\n", busId);
+			print_error("busId:%02bx\r\n", busId);
             return BOTP_ERROR_MSG_BUS;
         break;
 	}

@@ -108,7 +108,7 @@ u8 AT24CXX_Check(void)
 {
 	u8 temp;
 	temp=AT24CXX_ReadOneByte(0);//°¿®π?a??°‰??a?®≤??D°‰AT24CXX	
-    printf("%bd\n", temp);
+    print_info("%bd\n", temp);
 	if(temp == 0x36)return 0;		   
 	else//??3y¶Ã®≤®∞?°‰?3?®∫??°•¶Ã??®¶??
 	{
