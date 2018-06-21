@@ -22,7 +22,7 @@ uint16_t hash_calc(char * str, uint8_t len) {
     for (i = 0;i < len;i += step) {
         hash = hash ^ ((hash << 5) + (hash >> 2) + (unsigned char)(str[i]));
     }
-    printf("hash:%04x\r\n", hash);
+    print_debug("hash:%04x\r\n", hash);
     return hash;
 }
 
@@ -56,32 +56,32 @@ cmd_status cmd_exec(cmd_code cmd_e) {
     cmd_status ret = cmd_ErrorFormat;
     switch (cmd_e) {
         case cmd_Error:
-            printf("cmd code error\r\n");
+            print_debug("cmd code error\r\n");
             break;
         
         case cmd_LcdOff:
-            printf("LCD of\rf\n");
+            print_debug("LCD of\rf\n");
             break;
         
         case cmd_LcdOn:
-            printf("LCD on\r\n");
+            print_debug("LCD on\r\n");
             break;
         
         case cmd_Ping:
-            printf("OK\r\n");
+            print_debug("OK\r\n");
             ret = cmd_OK;
             break;
         
         case cmd_EpmRead:
-            printf("eeprom read test\r\n");
+            print_debug("eeprom read test\r\n");
             break;
         
         case cmd_EpmWrite:
-            printf("eeprom write test\r\n");
+            print_debug("eeprom write test\r\n");
             break;
         
         default:
-            printf("Format error\r\n");
+            print_error("Format error\r\n");
     }
         
     return ret;

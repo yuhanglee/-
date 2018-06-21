@@ -640,13 +640,13 @@ void create_multi_string(char* out) {
     strcpy(out, p);
     myfree(p);
     cJSON_Delete(root); 
-    printf("***************\r\n");
-    printf("%s\r\n",out); 
-    printf("mem:%d\r\n", mem_perused());
+    print_debug("***************\r\n");
+    print_debug("%s\r\n",out); 
+    print_debug("mem:%d\r\n", mem_perused());
     if (mem_perused() > 70){
         mem_init();
     }
-    printf("***************\r\n");
+    print_debug("***************\r\n");
 }
 extern HttpPackerHeader httpHeader;
 void parseJson(cJSON * Json, char *pMsg) {

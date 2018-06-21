@@ -378,6 +378,11 @@
               <FileType>1</FileType>
               <FilePath>..\Source\system\timer.c</FilePath>
             </File>
+            <File>
+              <FileName>WDT.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Source\system\WDT.c</FilePath>
+            </File>
           </Files>
         </Group>
         <Group>
@@ -410,6 +415,11 @@
               <FileName>botp.c</FileName>
               <FileType>1</FileType>
               <FilePath>..\Source\botp.c</FilePath>
+            </File>
+            <File>
+              <FileName>crc.c</FileName>
+              <FileType>1</FileType>
+              <FilePath>..\Source\crc.c</FilePath>
             </File>
           </Files>
         </Group>

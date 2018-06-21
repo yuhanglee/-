@@ -12,7 +12,9 @@
 #include "gt20.h"
 #include "led.h"
 #include "key.h"
+#include "WDT.h"
 #include "botp.h"
+#include "crc.h"
 
 LEDItem LEDRes[4];
 static void Delay_ms(uint16_t Del_1ms) {
@@ -79,11 +81,12 @@ void LED_Exp(uint32_t Color, uint32_t Freq, uint8_t Count) {
 		break;
 		
 		default:
-			LED_F(0, 0, 100); // Í£Ö¹ÉÁË¸
+			LED_F(0, 0, 100); // åœæ­¢é—ªçƒ
 		break;
 	}
 					
 }
+
 
 #define TASK_LED			0x00
 void RunTask(void) {
@@ -91,40 +94,43 @@ void RunTask(void) {
     uint16_t index = 0;
     BOTP b;
 	uint8_t c = 0;
+	uint16_t crc16 = 0x0000;
     
 	for (i = 0;i < 1;i++) {
 		switch (i) {
 			case TASK_LED:
-				if (((LED.Color >> 24) & 0xff) == 0x00) { // LED ÓĞÊı¾İ´«Êä¹ıÀ´
+				if (((LED.Color >> 24) & 0xff) == 0x00) { // LED æœ‰æ•°æ®ä¼ è¾“è¿‡æ¥
 					LED_Exp(LED.Color & 0x00ffffff, LED.Freq & 0x3fffffff, (LED.Freq >> 30) & 0x03);
-					// ¸³Öµ¸ø½á¹ûÊı×é
+					// èµ‹å€¼ç»™ç»“æœæ•°ç»„
                     LEDRes[(LED.Freq >> 30) & 0x03].Color = LED.Color;
                     LEDRes[(LED.Freq >> 30) & 0x03].Freq  = LED.Freq & 0x3fffffff;
-                    // Çåµô±êÖ¾
+                    // æ¸…æ‰æ ‡å¿—
                     LED.Color |= 0xff000000;
-				} else if (((LED.Color >> 24) & 0xff) == 0x01) { // LED ·µ»Ø½á¹û£¬·µ»Ø½á¹û£¬ÀûÓÃLEDµÄ½á¹¹Ìå£¬½øĞĞ·µ»Ø
-                    // ³õÊ¼»¯BOTPĞ­Òé
+				} else if (((LED.Color >> 24) & 0xff) == 0x01) { // LED è¿”å›ç»“æœï¼Œè¿”å›ç»“æœï¼Œåˆ©ç”¨LEDçš„ç»“æ„ä½“ï¼Œè¿›è¡Œè¿”å›
+                    // åˆå§‹åŒ–BOTPåè®®
                     BOTP_Init(&b, BOTP_MAC_ADDR, device[0].Mac);
-                    // Ìî³ä½á¹ûÊı×é
+                    // å¡«å……ç»“æœæ•°ç»„
                     for (c = 0;c < 4;c++) {
                         if (LEDRes[c].Color != 0) {
-                            BOTP_ObjToObjNotNull(&(b.Pack), index, EXEC_OBJ_CMD_LED_RET, (uint8_t *)(&(LEDRes[c])), sizeof(LEDRes[0]));
-                            index += (sizeof(LEDRes[0]) + 1);
+							BOTP_PackAddZore(&(b.Pack), index, EXEC_OBJ_CMD_LED_RET);
+							BOTP_ObjToObjNotNull(&(b.Pack), index+1, EXEC_OBJ_CMD_LED_RET, (uint8_t *)(&(LEDRes[c])), sizeof(LEDRes[0]));
+                            index += (sizeof(LEDRes[0]) + 2);
                         }
                     }
-                    // ÉèÖÃ³¤¶È
+                    // è®¾ç½®é•¿åº¦
                     BOTP_SetPackLength(&b, index);
-                    BOTP_ObjToNull(&(b.Pack), index++);
-                    BOTP_ObjToNull(&(b.Pack), index++);
+					crc16 = CRC_16((uint8_t *)(&(b.Pack), index));
+					// è®¾ç½®crcæ ¡éªŒ
+ 					BOTP_SetPackDataCrc16(b, crc16);
                     b.Msg.BusID = device[0].Msg.BusID;
                     b.Msg.Type = device[0].Msg.Type;
                     BOTP_SendData(&b);
-                    // Í£Ö¹ÉÁË¸
+                    // åœæ­¢é—ªçƒ
                     LED_Exp(0, 0, 0);
 					
-                    // Çåµô±êÖ¾
+                    // æ¸…æ‰æ ‡å¿—
                     LED.Color |= 0xff000000;
-                    // Çå¿ÕÊı×é
+                    // æ¸…ç©ºæ•°ç»„
                     memset(LEDRes, 0, sizeof(LEDRes));
                 }
 			break;
@@ -132,13 +138,13 @@ void RunTask(void) {
 	}
 }
 
-
 void main(void) {
     BOTP * pb;
     
 	uint16_t i = 0, j;
 	uint8_t index = 0;
-	
+
+	WDT_Init(WDT_PS_256);
     SystemInit();
     
     LED_Init();
@@ -154,13 +160,29 @@ void main(void) {
     wptr = 0;
     
 		
-	ExecObjInit(&(ExecObjArray[0]),		// Íâ²¿obj 
+	ExecObjInit(&(ExecObjArray[0]),		// å¤–éƒ¨obj 
 				EXEC_OBJ_CMD_LED, 		// id
 				sizeof(LEDItem), 		// len
 				(void *)(&LED));		// data
 	
 	print_debug("led:%bx\r\n", sizeof(LEDItem));
-
+/*
+	while (1) {
+		if (wptr != 0) {
+			if (wptr > 0x1A) {
+				pb = (BOTP *)buffer;
+				if (wptr >= (pb->PackLen + 0x1C)) {
+					Delay_ms(10);
+					for (i = 0;i < wptr;i++) {
+						printf("%02bx ", buffer[i]);
+					}
+					printf("\r\n");
+					wptr = 0;
+				}
+			}
+		}
+	}
+	*/
     while (1) {
         if (wptr != rptr) {
 			if (wptr > 0x1A) {
@@ -178,5 +200,6 @@ void main(void) {
         }
 		
 		RunTask();
+		WDT_ReloadCount();	// é å‚œå«
     }
 }

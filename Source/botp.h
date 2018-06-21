@@ -120,14 +120,14 @@
 #define PACK_TYPE_STRING		0x0D
 #define PACK_TYPE_TEXT			0x0E
 #define PACK_TYPE_OBJ			0x40
-#define PACK_TYPE_OBJ_NULL		(PACK_TYPE_OBJ + 1)
-#define PACK_TYPE_OBJ_NOT_NULL	(PACK_TYPE_OBJ + 2)
-#define PACK_TYPE_OBJ_NULL_STR	(PACK_TYPE_OBJ + 3)
-#define PACK_TYPE_OBJ_STR		(PACK_TYPE_OBJ + 4)
-#define PACK_TYPE_ARRAY_SMALL	0x80				// »ù±¾ÀàĞÍµÄĞ¡Êı×é ³¤¶È×î´óÎª 255 
-#define PACK_TYPE_ARRAY_LONG	0xA0				// »ù±¾ÀàĞÍµÄ´óÊı×é ³¤¶È×î´óÎª 65535 
-#define PACK_TYPE_CLCT_NULL		0xC0				// ÎŞÀàĞÍµÄ²É¼¯ 
-#define PACK_TYPE_CLCT			0xE0 				// ÓĞÀàĞÍµÄ²É¼¯
+#define PACK_TYPE_OBJ_NULL		(PACK_TYPE_OBJ + 0)
+#define PACK_TYPE_OBJ_NOT_NULL	(PACK_TYPE_OBJ + 1)
+#define PACK_TYPE_OBJ_NULL_STR	(PACK_TYPE_OBJ + 2)
+#define PACK_TYPE_OBJ_STR		(PACK_TYPE_OBJ + 3)
+#define PACK_TYPE_ARRAY_SMALL	0x80				// åŸºæœ¬ç±»å‹çš„å°æ•°ç»„ é•¿åº¦æœ€å¤§ä¸º 255 
+#define PACK_TYPE_ARRAY_LONG	0xA0				// åŸºæœ¬ç±»å‹çš„å¤§æ•°ç»„ é•¿åº¦æœ€å¤§ä¸º 65535 
+#define PACK_TYPE_CLCT_NULL		0xC0				// æ— ç±»å‹çš„é‡‡é›† 
+#define PACK_TYPE_CLCT			0xE0 				// æœ‰ç±»å‹çš„é‡‡é›†
 
 #define IS_PACK_TYPE(t)			(\
 									PACK_TYPE_NULL 				== (t) || \
@@ -136,12 +136,12 @@
 									PACK_TYPE_BYTE				== (t) || \
 									PACK_TYPE_SHORT				== (t) || \
 									PACK_TYPE_INT				== (t) || \
-									PACK_PYTE_LONG				== (t) || \
-									PACK_PYTE_FLOAT				== (t) || \
-									PACK_PYTE_DOUBLE			== (t) || \
-									PACK_PYTE_DATE				== (t) || \
-									PACK_PYTE_TIME				== (t) || \
-									PACK_PYTE_DATETIME			== (t) || \
+									PACK_TYPE_LONG				== (t) || \
+									PACK_TYPE_FLOAT				== (t) || \
+									PACK_TYPE_DOUBLE			== (t) || \
+									PACK_TYPE_DATE				== (t) || \
+									PACK_TYPE_TIME				== (t) || \
+									PACK_TYPE_DATETIME			== (t) || \
 									PACK_TYPE_UUID				== (t) || \
 									PACK_TYPE_STRING			== (t) || \
 									PACK_TYPE_TEXT				== (t) || \
@@ -180,11 +180,11 @@
 #define BOTP_SetDMacAddr(b, addr)			((b)->DMacAddr = (addr))
 #define BOTP_SetQuickCmd(b, cmd)			((b)->QuickCmd = (cmd))
 #define BOTP_SetPackLength(b, length)		((b)->PackLen = (length))
+#define BOTP_SetPackDataCrc16(b, crc)		((*(uint16_t *)(&((b).Pack[(b).PackLen]))  ) =  (crc))
 
 #define BOTP_SetPackType(p, type)			((p)->Type = (type))
 #define BOTP_SetPackStringLength(p, l)		((p)->StrLen = (l))
 #define BOTP_SetPackTextLength(p, l)		((p)->TextLen = (l))
-#define BOTP_SetPackDataCrc16(p, crc)		((p)->Crc16 = (crc))
 
 #define BOTP_GetBusID(b)					((b).Msg.BusID)
 #define BOTP_GetMsgType(b)					((b).Msg.Type)
@@ -192,19 +192,21 @@
 #define BOTP_GetMsgCount(b)					((b).MsgCount)
 #define BOTP_GetDMacAddr(b) 				((b).DMacAddr)
 #define BOTP_GetQuickCmd(b)					((b).QuickCmd)
+#define BOTP_GetPackDataCrc16(b)			(*((uint16_t *)(&(b).Pack.Data[(b).PackLen])))
 #define BOTP_GetPackLength(b)				((b).PackLen)
 #define BOTP_GetPackType(p)					((p).Type)
 #define BOTP_GetPackStringLength(p)			((p).StrLen)
 #define BOTP_GetPackTextLength(p)			((p).TextLen)
-#define BOTP_GetPackDataCrc16(p)			((p).Crc16)
 
 #define IS_EXT_DEV_ID(id)					( \
 												((id) >= 0) && \
 												((id) <= 7) \
 											) 
+	
+	
+#define EXEC_OBJ_CMD_LED					0x51				// LED å…‰èåˆå®éªŒç»“æ„ä½“
+#define EXEC_OBJ_CMD_LED_RET				0x52				// LED å…‰èåˆå®éªŒç»“æœ
 
-#define EXEC_OBJ_CMD_LED					0x51				// LED ¹âÈÚºÏÊµÑé½á¹¹Ìå
-#define EXEC_OBJ_CMD_LED_RET				0x52				// LED ¹âÈÚºÏÊµÑé½á¹û
 
 #define IS_OBJ_CMD(id)						( \
 												(EXEC_OBJ_CMD_LED 				== (id)) || \
@@ -329,54 +331,53 @@
 
 
 typedef struct {
-	uint8_t 	Data[PACK_DATA_LEN];
-	uint16_t 	Crc16;
+	uint8_t 	Data[PACK_DATA_LEN + 2];
 } Pack_t;
 
 struct _msg{
 	uint8_t BusID:4;
 	uint8_t Type:4; 
 };
+
 typedef struct {
 	uint32_t	 	Header; 		// "BOTP"
-	uint16_t 		Family;			// ushort ÀàĞÍ  	0x0000 Î¢³©    0xffff ×ÔÓÉĞ­Òé
-	uint8_t 		Version;		// °æ±¾			 	0x00   ¿ª·¢°æ±¾
-	struct _msg		Msg;			// ÏûÏ¢ÀàĞÍ 
-	uint32_t 		SMacAddr;		// ´ÓÉè±¸macµØÖ· 
- 	uint32_t 		MsgCount;		// ÏûÏ¢¼ÆÊı
- 	uint32_t 		DMacAddr;		// Ä¿±êÉè±¸macµØÖ·  ¹©ÖĞ¼ÌÊ¹ÓÃ
-	uint32_t 		QuickCmd;		// ¿ìËÙÖ¸Áî
-	uint16_t 		PackLen;		// Êı¾İ³¤¶È
+	uint16_t 		Family;			// ushort ç±»å‹  	0x0000 å¾®ç•…    0xffff è‡ªç”±åè®®
+	uint8_t 		Version;		// ç‰ˆæœ¬			 	0x00   å¼€å‘ç‰ˆæœ¬
+	struct _msg		Msg;			// æ¶ˆæ¯ç±»å‹ 
+	uint32_t 		SMacAddr;		// ä»è®¾å¤‡macåœ°å€ 
+ 	uint32_t 		MsgCount;		// æ¶ˆæ¯è®¡æ•°
+ 	uint32_t 		DMacAddr;		// ç›®æ ‡è®¾å¤‡macåœ°å€  ä¾›ä¸­ç»§ä½¿ç”¨
+	uint32_t 		QuickCmd;		// å¿«é€ŸæŒ‡ä»¤
+	uint16_t 		PackLen;		// æ•°æ®é•¿åº¦
 	Pack_t 	 		Pack;
 } BOTP;
 
 
 
 typedef struct {
-	struct _msg	Msg; 		// µ±Ç°Éè±¸ÏûÏ¢ÀàĞÍ  ²Î¿¼ BOTP µÄÏûÏ¢ÀàĞÍ
-	uint8_t 	Index;		// µ±Ç°Éè±¸Õ¼ÓÃ×ÊÔ´Ë÷ÒıÖµ 
-	uint32_t 	Mac;		// µ±Ç°Éè±¸ MAC µØÖ·(CRC32) 
+	struct _msg	Msg; 		// å½“å‰è®¾å¤‡æ¶ˆæ¯ç±»å‹  å‚è€ƒ BOTP çš„æ¶ˆæ¯ç±»å‹
+	uint8_t 	Index;		// å½“å‰è®¾å¤‡å ç”¨èµ„æºç´¢å¼•å€¼ 
+	uint32_t 	Mac;		// å½“å‰è®¾å¤‡ MAC åœ°å€(CRC32) 
 } ExtDev;
 
 extern ExtDev device[];
 typedef struct {
-    uint8_t     CE;         // CE Òı½Å×´Ì¬£¬Ã¿¸öÉè±¸Õ¼1bit£¬¹²1*8=8bits
-    uint8_t     USE;        // USE Òı½Å×´Ì¬£¬Ã¿¸öÉè±¸Õ¼1bit£¬¹²1*8=8bits
-    uint8_t     INT;        // INT Òı½Å×´Ì¬£¬Ã¿¸öÉè±¸Õ¼1bit£¬¹²1*8=8bits
-    uint32_t    ADDR;       // ADDR Ã¿¸öÉè±¸Õ¼3bits£¬¹²3*8=24bits
-    uint32_t    BUS;        // ×ÜÏßĞ­Òé£¬Ã¿¸öÉè±¸Õ¼ 3bits £¬¹² 3*8=24 bits
+    uint8_t     CE;         // CE å¼•è„šçŠ¶æ€ï¼Œæ¯ä¸ªè®¾å¤‡å 1bitï¼Œå…±1*8=8bits
+    uint8_t     USE;        // USE å¼•è„šçŠ¶æ€ï¼Œæ¯ä¸ªè®¾å¤‡å 1bitï¼Œå…±1*8=8bits
+    uint8_t     INT;        // INT å¼•è„šçŠ¶æ€ï¼Œæ¯ä¸ªè®¾å¤‡å 1bitï¼Œå…±1*8=8bits
+    uint32_t    ADDR;       // ADDR æ¯ä¸ªè®¾å¤‡å 3bitsï¼Œå…±3*8=24bits
+    uint32_t    BUS;        // æ€»çº¿åè®®ï¼Œæ¯ä¸ªè®¾å¤‡å  3bits ï¼Œå…± 3*8=24 bits
 } ExtDevInfo;
 
 #define OBJ_LEN				8
 typedef struct {
-	uint8_t Id;				// Ö´ĞĞobjµÄÎ¨Ò»±êÊ¶
-	uint8_t Len;			// ObjµÄ³¤¶È£¬ÓÃÓÚ»ñÈ¡Êı¾İ
-	void *  Data;			// Êı¾İµÄÖ¸Õë
+	uint8_t Id;				// æ‰§è¡Œobjçš„å”¯ä¸€æ ‡è¯†
+	uint8_t Len;			// Objçš„é•¿åº¦ï¼Œç”¨äºè·å–æ•°æ®
+	void *  Data;			// æ•°æ®çš„æŒ‡é’ˆ
 } ExecObjItem;
 extern ExecObjItem ExecObjArray[];
 
-uint16_t CRC16_Calc(char * CrcArray, uint16_t CrcLen);
-void CRC16_CreateTable(void);
+
 uint16_t BOTP_PackDataFill(Pack_t * p);
 void BOTP_Init(BOTP * botp, uint32_t SrcMacAddr, uint32_t DecMacAddr);
 uint8_t BOTP_PackExtTest(Pack_t * p, uint16_t len);
